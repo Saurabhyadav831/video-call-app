@@ -1,0 +1,21 @@
+{
+  "watch": [
+    "server.js",
+    "src/**/*.js",
+    "views/**/*.html"
+  ],
+  "ext": "js,json,html",
+  "ignore": [
+    "node_modules/**/*",
+    "public/css/styles.css",
+    "*.log"
+  ],
+  "env": {
+    "NODE_ENV": "development"
+  },
+  "delay": "1000",
+  "verbose": true,
+  "restartable": "rs",
+  "colours": true,
+  "exec": "node server.js"
+} 

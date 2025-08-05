@@ -2,6 +2,7 @@
 <html>
 <head>
     <title>Camera Access Test</title>
+    <link href="/css/styles.css" rel="stylesheet">
     <!-- Auto-redirect to HTTPS for camera access -->
     <script>
       if (window.location.protocol === 'http:' && !window.location.hostname.includes('localhost')) {
@@ -9,152 +10,113 @@
         window.location.href = httpsUrl;
       }
     </script>
-    <style>
-        body { 
-            font-family: Arial, sans-serif; 
-            margin: 20px; 
-            background: #f5f5f5;
-        }
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        .status {
-            padding: 10px;
-            margin: 10px 0;
-            border-radius: 4px;
-            font-weight: bold;
-        }
-        .success { background: #d4edda; color: #155724; }
-        .error { background: #f8d7da; color: #721c24; }
-        .info { background: #d1ecf1; color: #0c5460; }
-        video { 
-            width: 100%; 
-            max-width: 400px; 
-            height: 300px; 
-            margin: 10px 0; 
-            border: 2px solid #ddd; 
-            border-radius: 4px;
-        }
-        button { 
-            margin: 5px; 
-            padding: 10px 20px; 
-            border: none;
-            border-radius: 4px;
-            background: #007bff;
-            color: white;
-            cursor: pointer;
-        }
-        button:hover { background: #0056b3; }
-        .urls {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 4px;
-            margin: 15px 0;
-        }
-        .urls h3 { margin-top: 0; }
-        .url-item {
-            margin: 5px 0;
-            padding: 5px;
-            background: white;
-            border-radius: 3px;
-        }
-    </style>
 </head>
-<body>
-    <div class="container">
-        <h1>🎥 Camera Access Test</h1>
+<body class="font-sans m-5 bg-gray-100">
+    <div class="max-w-4xl mx-auto bg-white p-5 rounded-lg shadow-lg">
+        <h1 class="text-3xl font-bold mb-5">🎥 Camera Access Test</h1>
         
-        <div class="status info">
+        <div class="bg-blue-100 text-blue-800 p-3 mb-5 rounded font-semibold">
             <strong>Current Protocol:</strong> <span id="protocol"></span><br>
             <strong>Current Host:</strong> <span id="host"></span>
         </div>
 
-        <div class="urls">
-            <h3>📋 Available URLs</h3>
-            <div class="url-item">
-                <strong>HTTP (Local):</strong> <a href="http://localhost:8080" target="_blank">http://localhost:8080</a>
+        <div class="bg-gray-50 p-4 rounded mb-5">
+            <h3 class="text-lg font-semibold mb-3">📋 Available URLs</h3>
+            <div class="bg-white p-2 rounded mb-2">
+                <strong>HTTP (Local):</strong> <a href="http://localhost:8080" target="_blank" class="text-blue-600 hover:underline">http://localhost:8080</a>
             </div>
-            <div class="url-item">
-                <strong>HTTPS (Local):</strong> <a href="https://localhost:8443" target="_blank">https://localhost:8443</a>
+            <div class="bg-white p-2 rounded mb-2">
+                <strong>HTTPS (Local):</strong> <a href="https://localhost:8443" target="_blank" class="text-blue-600 hover:underline">https://localhost:8443</a>
             </div>
-            <div class="url-item">
-                <strong>HTTP (Network):</strong> <a href="http://192.168.1.117:8080" target="_blank">http://192.168.1.117:8080</a>
+            <div class="bg-white p-2 rounded mb-2">
+                <strong>HTTP (Network):</strong> <a href="http://192.168.1.117:8080" target="_blank" class="text-blue-600 hover:underline">http://192.168.1.117:8080</a>
             </div>
-            <div class="url-item">
-                <strong>HTTPS (Network):</strong> <a href="https://192.168.1.117:8443" target="_blank">https://192.168.1.117:8443</a>
+            <div class="bg-white p-2 rounded mb-2">
+                <strong>HTTPS (Network):</strong> <a href="https://192.168.1.117:8443" target="_blank" class="text-blue-600 hover:underline">https://192.168.1.117:8443</a>
             </div>
-            <div class="url-item">
+            <div class="bg-white p-2 rounded">
                 <strong>WSS Port:</strong> 8444 (for WebSocket connections)
             </div>
         </div>
 
-        <button onclick="testCamera()">🔍 Test Camera Access</button>
-        <button onclick="clearStatus()">🗑️ Clear Status</button>
+        <button class="bg-blue-500 text-white px-5 py-2 rounded mr-2 hover:bg-blue-600 cursor-pointer" onclick="testCamera()">🔍 Test Camera Access</button>
+        <button class="bg-gray-500 text-white px-5 py-2 rounded hover:bg-gray-600 cursor-pointer" onclick="clearStatus()">🗑️ Clear Status</button>
         
-        <div id="status"></div>
-        <video id="testVideo" autoplay muted playsinline></video>
-    </div>
+        <div id="status" class="mt-5"></div>
+        <video id="testVideo" autoplay muted playsinline class="w-full max-w-md h-72 border-2 border-gray-300 rounded my-3"></video>
 
-    <script>
-        // Display current protocol and host
-        document.getElementById('protocol').textContent = window.location.protocol;
-        document.getElementById('host').textContent = window.location.host;
-
-        function addStatus(message, type = 'info') {
-            const statusDiv = document.getElementById('status');
-            const div = document.createElement('div');
-            div.className = `status ${type}`;
-            div.innerHTML = `[${new Date().toLocaleTimeString()}] ${message}`;
-            statusDiv.appendChild(div);
-            statusDiv.scrollTop = statusDiv.scrollHeight;
-        }
-
-        function clearStatus() {
-            document.getElementById('status').innerHTML = '';
-        }
-
-        async function testCamera() {
-            try {
-                addStatus('🔍 Testing camera access...', 'info');
-                
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: {
-                        width: { ideal: 640 },
-                        height: { ideal: 480 }
-                    },
-                    audio: false
-                });
-                
-                const video = document.getElementById('testVideo');
-                video.srcObject = stream;
-                
-                addStatus('✅ Camera access successful!', 'success');
-                addStatus(`📹 Video tracks: ${stream.getVideoTracks().length}`, 'success');
-                addStatus(`🎤 Audio tracks: ${stream.getAudioTracks().length}`, 'success');
-                
-            } catch (error) {
-                addStatus(`❌ Camera access failed: ${error.message}`, 'error');
-                addStatus(`💡 Try using HTTPS URL for network access`, 'info');
-                
-                if (error.name === 'NotAllowedError') {
-                    addStatus(`🔒 Permission denied. Check browser settings.`, 'error');
-                } else if (error.name === 'NotFoundError') {
-                    addStatus(`📷 No camera found.`, 'error');
-                } else if (error.name === 'NotSupportedError') {
-                    addStatus(`🌐 HTTPS required for camera access on network.`, 'error');
+        <script>
+            // Display current protocol and host
+            document.getElementById('protocol').textContent = window.location.protocol;
+            document.getElementById('host').textContent = window.location.host;
+            
+            function addStatus(message, type = 'info') {
+                const statusDiv = document.getElementById('status');
+                const statusClass = type === 'success' ? 'bg-green-100 text-green-800' : 
+                                  type === 'error' ? 'bg-red-100 text-red-800' : 
+                                  'bg-blue-100 text-blue-800';
+                statusDiv.innerHTML += `<div class="${statusClass} p-3 rounded mb-2 font-semibold">${message}</div>`;
+            }
+            
+            function clearStatus() {
+                document.getElementById('status').innerHTML = '';
+            }
+            
+            async function testCamera() {
+                try {
+                    addStatus('🔍 Requesting camera access...', 'info');
+                    
+                    const stream = await navigator.mediaDevices.getUserMedia({
+                        video: true,
+                        audio: true
+                    });
+                    
+                    const video = document.getElementById('testVideo');
+                    video.srcObject = stream;
+                    
+                    addStatus('✅ Camera access granted! Video should be visible above.', 'success');
+                    addStatus(`📹 Video tracks: ${stream.getVideoTracks().length}`, 'info');
+                    addStatus(`🎤 Audio tracks: ${stream.getAudioTracks().length}`, 'info');
+                    
+                    // Test WebSocket connection
+                    testWebSocket();
+                    
+                } catch (error) {
+                    addStatus(`❌ Camera access denied: ${error.message}`, 'error');
+                    addStatus('💡 Make sure you\'re using HTTPS or localhost', 'info');
+                    addStatus('💡 Check that your browser supports getUserMedia', 'info');
                 }
             }
-        }
-
-        // Auto-test on page load
-        window.addEventListener('load', () => {
-            addStatus('🚀 Page loaded. Click "Test Camera Access" to begin.', 'info');
-        });
-    </script>
+            
+            function testWebSocket() {
+                addStatus('🔌 Testing WebSocket connection...', 'info');
+                
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const host = window.location.hostname;
+                const port = window.location.protocol === 'https:' ? '8444' : '3000';
+                const wsUrl = `${protocol}//${host}:${port}`;
+                
+                const ws = new WebSocket(wsUrl);
+                
+                ws.onopen = () => {
+                    addStatus('✅ WebSocket connection successful!', 'success');
+                    ws.close();
+                };
+                
+                ws.onerror = (error) => {
+                    addStatus(`❌ WebSocket connection failed: ${error}`, 'error');
+                };
+                
+                ws.onclose = () => {
+                    addStatus('🔌 WebSocket connection closed', 'info');
+                };
+            }
+            
+            // Auto-test on page load
+            setTimeout(() => {
+                testCamera();
+            }, 1000);
+        </script>
+    </div>
 </body>
 </html> 

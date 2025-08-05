@@ -2,6 +2,7 @@
 <html>
 <head>
     <title>WebRTC Test</title>
+    <link href="/css/styles.css" rel="stylesheet">
     <!-- Auto-redirect to HTTPS for camera access -->
     <script>
       if (window.location.protocol === 'http:' && !window.location.hostname.includes('localhost')) {
@@ -9,23 +10,17 @@
         window.location.href = httpsUrl;
       }
     </script>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        .log { background: #f0f0f0; padding: 10px; margin: 10px 0; height: 200px; overflow-y: scroll; }
-        video { width: 300px; height: 225px; margin: 10px; border: 1px solid #ccc; }
-        button { margin: 5px; padding: 10px; }
-    </style>
 </head>
-<body>
-    <h1>WebRTC Connection Test</h1>
-    <div>
-        <button onclick="startTest()">Start Test</button>
-        <button onclick="clearLog()">Clear Log</button>
+<body class="font-sans m-5">
+    <h1 class="text-3xl font-bold mb-5">WebRTC Connection Test</h1>
+    <div class="mb-4">
+        <button class="bg-blue-500 text-white px-4 py-2 rounded mr-2 hover:bg-blue-600" onclick="startTest()">Start Test</button>
+        <button class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600" onclick="clearLog()">Clear Log</button>
     </div>
-    <div class="log" id="log"></div>
-    <div>
-        <video id="localVideo" autoplay muted playsinline></video>
-        <video id="remoteVideo" autoplay playsinline></video>
+    <div class="bg-gray-100 p-3 mb-4 h-48 overflow-y-scroll border rounded" id="log"></div>
+    <div class="flex gap-4">
+        <video id="localVideo" autoplay muted playsinline class="w-80 h-60 border border-gray-300 rounded"></video>
+        <video id="remoteVideo" autoplay playsinline class="w-80 h-60 border border-gray-300 rounded"></video>
     </div>
 
     <script>
@@ -99,89 +94,73 @@
                 ]
             });
             
-            // Add local tracks
+            // Add local stream
             localStream.getTracks().forEach(track => {
                 peerConnection.addTrack(track, localStream);
-                logMessage(`Added track: ${track.kind}`);
             });
             
-            // Handle ICE candidates
+            // Handle remote stream
+            peerConnection.ontrack = (event) => {
+                remoteVideo.srcObject = event.streams[0];
+                logMessage('Got remote stream');
+            };
+            
+            // ICE candidate handling
             peerConnection.onicecandidate = (event) => {
                 if (event.candidate) {
-                    logMessage('Sending ICE candidate');
                     ws.send(JSON.stringify({
-                        type: 'candidate',
+                        type: 'ice-candidate',
                         candidate: event.candidate
                     }));
                 }
             };
             
-            // Handle remote stream
-            peerConnection.ontrack = (event) => {
-                logMessage('Received remote stream');
-                remoteVideo.srcObject = event.streams[0];
-            };
-            
-            // Handle connection state
-            peerConnection.onconnectionstatechange = () => {
-                logMessage(`Connection state: ${peerConnection.connectionState}`);
-            };
-            
-            // Handle ICE connection state
             peerConnection.oniceconnectionstatechange = () => {
                 logMessage(`ICE connection state: ${peerConnection.iceConnectionState}`);
             };
             
             logMessage('Peer connection initialized');
-            
-            // Create offer after a delay
-            setTimeout(() => {
-                createOffer();
-            }, 1000);
-        }
-        
-        async function createOffer() {
-            try {
-                logMessage('Creating offer...');
-                const offer = await peerConnection.createOffer();
-                await peerConnection.setLocalDescription(offer);
-                ws.send(JSON.stringify(offer));
-                logMessage('Offer sent');
-            } catch (error) {
-                logMessage(`Error creating offer: ${error.message}`);
-            }
         }
         
         async function handleSignalingMessage(message) {
             switch (message.type) {
-                case 'client-id':
-                    logMessage(`Client ID: ${message.id}`);
-                    break;
-                    
                 case 'offer':
-                    logMessage('Handling offer');
-                    await peerConnection.setRemoteDescription(new RTCSessionDescription(message));
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription(message.offer));
                     const answer = await peerConnection.createAnswer();
                     await peerConnection.setLocalDescription(answer);
-                    ws.send(JSON.stringify(answer));
-                    logMessage('Answer sent');
+                    ws.send(JSON.stringify({
+                        type: 'answer',
+                        answer: answer
+                    }));
                     break;
                     
                 case 'answer':
-                    logMessage('Handling answer');
-                    await peerConnection.setRemoteDescription(new RTCSessionDescription(message));
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription(message.answer));
                     break;
                     
-                case 'candidate':
-                    logMessage('Adding ICE candidate');
+                case 'ice-candidate':
                     await peerConnection.addIceCandidate(new RTCIceCandidate(message.candidate));
-                    break;
-                    
-                case 'peer-disconnected':
-                    logMessage('Peer disconnected');
                     break;
             }
         }
+        
+        // Create offer for testing
+        async function createOffer() {
+            const offer = await peerConnection.createOffer();
+            await peerConnection.setLocalDescription(offer);
+            ws.send(JSON.stringify({
+                type: 'offer',
+                offer: offer
+            }));
+            logMessage('Created and sent offer');
+        }
+        
+        // Auto-create offer after a delay
+        setTimeout(() => {
+            if (peerConnection) {
+                createOffer();
+            }
+        }, 2000);
     </script>
 </body>
 </html> 
