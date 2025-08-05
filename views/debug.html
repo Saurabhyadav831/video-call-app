@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Video Call Debug</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #1a1a1a;
+            color: white;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .video-container {
+            display: flex;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        video {
+            width: 400px;
+            height: 300px;
+            border: 2px solid #333;
+            background: #000;
+        }
+        .log {
+            background: #000;
+            color: #0f0;
+            padding: 10px;
+            height: 300px;
+            overflow-y: scroll;
+            font-family: monospace;
+            font-size: 12px;
+            border: 1px solid #333;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .status {
+            background: #333;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Video Call Debug</h1>
+        
+        <div class="status" id="status">Initializing...</div>
+        
+        <div class="video-container">
+            <div>
+                <h3>Local Video</h3>
+                <video id="localVideo" autoplay muted playsinline></video>
+            </div>
+            <div>
+                <h3>Remote Video</h3>
+                <video id="remoteVideo" autoplay playsinline></video>
+            </div>
+        </div>
+        
+        <div>
+            <button onclick="startTest()">Start Test</button>
+            <button onclick="clearLog()">Clear Log</button>
+        </div>
+        
+        <div class="log" id="log"></div>
+    </div>
+
+    <script>
+        const log = document.getElementById('log');
+        const localVideo = document.getElementById('localVideo');
+        const remoteVideo = document.getElementById('remoteVideo');
+        const status = document.getElementById('status');
+        
+        let ws, peerConnection, localStream;
+        
+        function logMessage(msg) {
+            const time = new Date().toLocaleTimeString();
+            log.innerHTML += `[${time}] ${msg}<br>`;
+            log.scrollTop = log.scrollHeight;
+            console.log(msg);
+        }
+        
+        function clearLog() {
+            log.innerHTML = '';
+        }
+        
+        function updateStatus(msg) {
+            status.textContent = msg;
+            logMessage(`Status: ${msg}`);
+        }
+        
+        async function startTest() {
+            try {
+                logMessage('Starting debug test...');
+                
+                // Get user media
+                localStream = await navigator.mediaDevices.getUserMedia({
+                    video: true,
+                    audio: true
+                });
+                localVideo.srcObject = localStream;
+                logMessage('Got local media stream');
+                
+                // Create WebSocket connection
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const host = window.location.hostname;
+                const port = window.location.protocol === 'https:' ? '8444' : '3000';
+                ws = new WebSocket(`${protocol}//${host}:${port}`);
+                
+                ws.onopen = () => {
+                    logMessage('WebSocket connected');
+                    initPeerConnection();
+                };
+                
+                ws.onmessage = async (event) => {
+                    try {
+                        const message = JSON.parse(event.data);
+                        logMessage(`Received: ${message.type}`);
+                        handleSignalingMessage(message);
+                    } catch (error) {
+                        logMessage(`Error parsing message: ${error}`);
+                    }
+                };
+                
+                ws.onclose = () => {
+                    logMessage('WebSocket disconnected');
+                };
+                
+                ws.onerror = (error) => {
+                    logMessage(`WebSocket error: ${error}`);
+                };
+                
+            } catch (error) {
+                logMessage(`Error: ${error.message}`);
+            }
+        }
+        
+        function initPeerConnection() {
+            peerConnection = new RTCPeerConnection({
+                iceServers: [
+                    { urls: 'stun:stun.l.google.com:19302' }
+                ]
+            });
+            
+            // Add local tracks
+            localStream.getTracks().forEach(track => {
+                peerConnection.addTrack(track, localStream);
+                logMessage(`Added track: ${track.kind}`);
+            });
+            
+            // Handle ICE candidates
+            peerConnection.onicecandidate = (event) => {
+                if (event.candidate) {
+                    logMessage('Sending ICE candidate');
+                    ws.send(JSON.stringify({
+                        type: 'candidate',
+                        candidate: event.candidate
+                    }));
+                }
+            };
+            
+            // Handle remote stream
+            peerConnection.ontrack = (event) => {
+                logMessage('Received remote stream');
+                logMessage(`Streams: ${event.streams.length}`);
+                logMessage(`Tracks: ${event.tracks.length}`);
+                
+                if (event.streams && event.streams[0]) {
+                    logMessage('Setting remote video srcObject');
+                    remoteVideo.srcObject = event.streams[0];
+                    
+                    remoteVideo.play().then(() => {
+                        logMessage('Remote video started playing');
+                    }).catch(error => {
+                        logMessage(`Error playing remote video: ${error}`);
+                    });
+                } else {
+                    logMessage('No streams in track event');
+                }
+            };
+            
+            // Handle connection state
+            peerConnection.onconnectionstatechange = () => {
+                logMessage(`Connection state: ${peerConnection.connectionState}`);
+            };
+            
+            // Handle ICE connection state
+            peerConnection.oniceconnectionstatechange = () => {
+                logMessage(`ICE connection state: ${peerConnection.iceConnectionState}`);
+            };
+            
+            logMessage('Peer connection initialized');
+            
+            // Create offer after a delay
+            setTimeout(() => {
+                createOffer();
+            }, 1000);
+        }
+        
+        async function createOffer() {
+            try {
+                logMessage('Creating offer...');
+                const offer = await peerConnection.createOffer();
+                await peerConnection.setLocalDescription(offer);
+                ws.send(JSON.stringify(offer));
+                logMessage('Offer sent');
+            } catch (error) {
+                logMessage(`Error creating offer: ${error.message}`);
+            }
+        }
+        
+        async function handleSignalingMessage(message) {
+            switch (message.type) {
+                case 'client-id':
+                    logMessage(`Client ID: ${message.id}`);
+                    break;
+                    
+                case 'offer':
+                    logMessage('Handling offer');
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription(message));
+                    const answer = await peerConnection.createAnswer();
+                    await peerConnection.setLocalDescription(answer);
+                    ws.send(JSON.stringify(answer));
+                    logMessage('Answer sent');
+                    break;
+                    
+                case 'answer':
+                    logMessage('Handling answer');
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription(message));
+                    break;
+                    
+                case 'candidate':
+                    logMessage('Adding ICE candidate');
+                    await peerConnection.addIceCandidate(new RTCIceCandidate(message.candidate));
+                    break;
+                    
+                default:
+                    logMessage(`Unknown message type: ${message.type}`);
+            }
+        }
+        
+        // Auto-redirect to HTTPS for camera access
+        if (window.location.protocol === 'http:' && !window.location.hostname.includes('localhost')) {
+            const httpsUrl = window.location.href.replace('http:', 'https:').replace(':8080', ':8443');
+            window.location.href = httpsUrl;
+        }
+    </script>
+</body>
+</html> 

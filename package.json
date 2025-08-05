@@ -1,0 +1,53 @@
+{
+  "name": "videocall-app",
+  "version": "1.0.0",
+  "description": "A modern, secure video calling application built with WebRTC and Express.js",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "concurrently \"npm run start\"",
+    "serve": "node server.js",
+    "build": "echo 'No build step required for this app'",
+    "test": "echo 'No tests specified'",
+    "lint": "echo 'No linting configured'",
+    "clean": "rm -rf node_modules package-lock.json",
+    "install-deps": "npm install",
+    "setup": "npm run install-deps && npm run dev",
+    "docker:build": "docker build -t videocall-app .",
+    "docker:run": "docker run -p 8080:8080 -p 8443:8443 -p 3000:3000 -p 8444:8444 videocall-app"
+  },
+  "keywords": [
+    "webrtc",
+    "video-call",
+    "video-chat",
+    "peer-to-peer",
+    "realtime",
+    "communication",
+    "express",
+    "nodejs"
+  ],
+  "author": "VideoCall App",
+  "license": "MIT",
+  "dependencies": {
+    "ws": "^8.18.3",
+    "express": "^4.21.2",
+    "cors": "^2.8.5",
+    "helmet": "^7.2.0",
+    "compression": "^1.8.1"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "nodemon": "^3.0.2"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Saurabhyadav831/videocall-app.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Saurabhyadav831/videocall-app/issues"
+  },
+  "homepage": "https://github.com/Saurabhyadav831/videocall-app#readme"
+}
